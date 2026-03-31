@@ -51,7 +51,6 @@ button { padding: 5px 10px; }
 
 .sat { background: #d9f0ff; }
 .sun { background: #ffd9d9; }
-.holiday { background: #ffe4e4; color: red; }
 </style>
 
 </head>
@@ -73,14 +72,13 @@ button { padding: 5px 10px; }
 
 <script>
 
-let myName = localStorage.getItem("myName") || "";
 let titleText = localStorage.getItem("title") || "参加カレンダー";
 let data = JSON.parse(localStorage.getItem("calendarData") || "{}");
 
 const ADMIN_PASS = "1234";
 
+// 色管理
 let nameColors = JSON.parse(localStorage.getItem("nameColors") || "{}");
-
 const colors = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f39c12","#1abc9c"];
 
 function getColor(name) {
@@ -91,6 +89,7 @@ function getColor(name) {
   return nameColors[name];
 }
 
+// 月管理
 let current = new Date();
 current.setDate(1);
 
@@ -99,6 +98,7 @@ function moveMonth(n) {
   render();
 }
 
+// タイトル編集
 function editTitle() {
   const t = prompt("タイトル", titleText);
   if (t) {
@@ -108,6 +108,7 @@ function editTitle() {
   }
 }
 
+// 全削除
 function clearAll() {
   const pass = prompt("パスワード");
   if (pass !== ADMIN_PASS) return alert("違います");
@@ -118,6 +119,7 @@ function clearAll() {
   render();
 }
 
+// 描画
 function render() {
   const cal = document.getElementById("calendar");
   cal.innerHTML = "";
@@ -132,6 +134,7 @@ function render() {
   createMonth(y, m+1);
 }
 
+// 月生成
 function createMonth(year, month) {
   const last = new Date(year, month+1, 0).getDate();
 
@@ -144,11 +147,13 @@ function createMonth(year, month) {
     if (day===0) row.classList.add("sun");
     if (day===6) row.classList.add("sat");
 
+    // 日付
     const date = document.createElement("div");
     date.className = "date";
     date.textContent = `${month+1}/${d}`;
     row.appendChild(date);
 
+    // 名前表示
     const names = document.createElement("div");
     names.className = "names";
 
@@ -158,9 +163,20 @@ function createMonth(year, month) {
       span.textContent = name;
       span.style.backgroundColor = getColor(name);
 
+      // ★ここが今回のポイント（入力一致削除）
       span.onclick = ()=>{
-        if (name!==myName) return alert("自分のみ削除可");
-        data[key] = data[key].filter(n=>n!==name);
+        const input = prompt("消す名前を入力してください");
+
+        if (!input) return;
+
+        if (input !== name) {
+          alert("名前が一致しません");
+          return;
+        }
+
+        if (!confirm(name + " を削除しますか？")) return;
+
+        data[key] = data[key].filter(n => n !== name);
         save();
       };
 
@@ -169,30 +185,37 @@ function createMonth(year, month) {
 
     row.appendChild(names);
 
+    // 追加ボタン
     const btn = document.createElement("div");
     btn.className = "add-btn";
     btn.textContent = "+参加";
 
     btn.onclick = ()=>{
-      if (!myName) {
-        myName = prompt("名前入力");
-        localStorage.setItem("myName", myName);
-      }
+      const newName = prompt("名前を入力してください");
+      if (!newName) return;
+
       data[key] = data[key] || [];
-      if (!data[key].includes(myName)) data[key].push(myName);
+
+      if (!data[key].includes(newName)) {
+        data[key].push(newName);
+      }
+
       save();
     };
 
     row.appendChild(btn);
+
     document.getElementById("calendar").appendChild(row);
   }
 }
 
+// 保存
 function save() {
   localStorage.setItem("calendarData", JSON.stringify(data));
   render();
 }
 
+// 初期表示
 render();
 
 </script>
