@@ -159,10 +159,21 @@ function createMonth(year, month) {
       span.style.backgroundColor = getColor(name);
 
       span.onclick = ()=>{
-        if (name!==myName) return alert("自分のみ削除可");
-        data[key] = data[key].filter(n=>n!==name);
-        save();
-      };
+      span.onclick = ()=>{
+  const input = prompt("消す名前を入力してください");
+
+  if (!input) return;
+
+  if (input !== name) {
+    alert("名前が一致しません");
+    return;
+  }
+
+  if (!confirm(name + " を削除しますか？")) return;
+
+  data[key] = data[key].filter(n => n !== name);
+  save();
+};
 
       names.appendChild(span);
     });
