@@ -7,11 +7,35 @@
 
 <style>
 body { font-family: sans-serif; margin: 10px; }
-.day-row { display:flex; border-bottom:1px solid #ccc; padding:5px; }
-.date { width:80px; }
-.name-tag { margin:2px; padding:2px 6px; border-radius:4px; color:#fff; cursor:pointer; }
-.add-btn { margin-left:auto; color:blue; cursor:pointer; }
+
+.day-row {
+  display:flex;
+  border-bottom:1px solid #ccc;
+  padding:5px;
+  align-items:center;
+}
+
+.date { width:140px; }
+
+.name-tag {
+  margin:2px;
+  padding:2px 6px;
+  border-radius:4px;
+  color:#fff;
+  cursor:pointer;
+}
+
+.add-btn {
+  margin-left:auto;
+  color:blue;
+  cursor:pointer;
+}
+
+.sun { background:#ffd6d6; }
+.sat { background:#d6eaff; }
+.holiday { color:red; font-weight:bold; }
 </style>
+
 </head>
 
 <body>
@@ -21,10 +45,12 @@ body { font-family: sans-serif; margin: 10px; }
 
 <script>
 
+// ===== データ =====
 let data = JSON.parse(localStorage.getItem("data")||"{}");
 let colors = {};
-const palette = ["red","blue","green","orange","purple"];
+const palette = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f39c12"];
 
+// ===== 色 =====
 function getColor(name){
  if(!colors[name]){
    colors[name] = palette[Object.keys(colors).length % palette.length];
@@ -32,26 +58,105 @@ function getColor(name){
  return colors[name];
 }
 
+// ===== 祝日 =====
+function getHoliday(year, month, day){
+
+  const fixed = {
+    "1-1":"元日",
+    "2-11":"建国記念の日",
+    "2-23":"天皇誕生日",
+    "4-29":"昭和の日",
+    "5-3":"憲法記念日",
+    "5-4":"みどりの日",
+    "5-5":"こどもの日",
+    "8-11":"山の日",
+    "11-3":"文化の日",
+    "11-23":"勤労感謝の日"
+  };
+
+  if (fixed[`${month}-${day}`]) return fixed[`${month}-${day}`];
+
+  function nthMonday(n){
+    let count=0;
+    for(let i=1;i<=31;i++){
+      let d=new Date(year,month-1,i);
+      if(d.getMonth()!=month-1) break;
+      if(d.getDay()==1) count++;
+      if(count==n) return i;
+    }
+  }
+
+  if(month==1 && day==nthMonday(2)) return "成人の日";
+  if(month==7 && day==nthMonday(3)) return "海の日";
+  if(month==9 && day==nthMonday(3)) return "敬老の日";
+  if(month==10 && day==nthMonday(2)) return "スポーツの日";
+
+  // 春分・秋分
+  function shunbun(y){
+    return Math.floor(20.8431 + 0.242194*(y-1980) - Math.floor((y-1980)/4));
+  }
+  function shubun(y){
+    return Math.floor(23.2488 + 0.242194*(y-1980) - Math.floor((y-1980)/4));
+  }
+
+  if(month==3 && day==shunbun(year)) return "春分の日";
+  if(month==9 && day==shubun(year)) return "秋分の日";
+
+  // 振替休日
+  let prev = new Date(year,month-1,day-1);
+  if(getHolidaySimple(prev) && prev.getDay()==0){
+    return "振替休日";
+  }
+
+  // 国民の休日
+  let next = new Date(year,month-1,day+1);
+  if(getHolidaySimple(prev) && getHolidaySimple(next)){
+    return "国民の休日";
+  }
+
+  return "";
+}
+
+// 基本祝日
+function getHolidaySimple(date){
+  return getHoliday(date.getFullYear(), date.getMonth()+1, date.getDate());
+}
+
+// ===== 描画 =====
 function render(){
  const cal = document.getElementById("calendar");
- cal.innerHTML = "";
+ cal.innerHTML="";
  document.getElementById("title").textContent="参加カレンダー";
 
- for(let d=1; d<=31; d++){
-   const key = "2026-1-"+d;
+ const year = 2026;
+ const month = 1;
 
-   const row = document.createElement("div");
+ for(let d=1; d<=31; d++){
+
+   const key = `${year}-${month}-${d}`;
+   const dateObj = new Date(year,month-1,d);
+   const day = dateObj.getDay();
+
+   const row=document.createElement("div");
    row.className="day-row";
 
-   const date = document.createElement("div");
+   if(day===0) row.classList.add("sun");
+   if(day===6) row.classList.add("sat");
+
+   const holiday = getHoliday(year,month,d);
+
+   const date=document.createElement("div");
    date.className="date";
-   date.textContent="1/"+d;
+   date.textContent = `${month}/${d}` + (holiday?`（${holiday}）`:"");
+
+   if(holiday) date.classList.add("holiday");
+
    row.appendChild(date);
 
-   const names = document.createElement("div");
+   const names=document.createElement("div");
 
    (data[key]||[]).forEach(name=>{
-     const span = document.createElement("span");
+     const span=document.createElement("span");
      span.className="name-tag";
      span.textContent=name;
      span.style.background=getColor(name);
@@ -74,6 +179,7 @@ function render(){
    const btn=document.createElement("div");
    btn.className="add-btn";
    btn.textContent="+参加";
+
    btn.onclick=()=>{
      const name=prompt("名前入力");
      if(!name)return;
