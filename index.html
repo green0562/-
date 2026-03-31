@@ -29,7 +29,7 @@ button { padding: 5px 10px; }
   align-items: center;
 }
 
-.date { width: 100px; font-weight: bold; }
+.date { width: 130px; font-weight: bold; }
 .names { flex: 1; }
 
 .name-tag {
@@ -51,6 +51,7 @@ button { padding: 5px 10px; }
 
 .sat { background: #d9f0ff; }
 .sun { background: #ffd9d9; }
+.holiday { color: red; }
 </style>
 
 </head>
@@ -87,6 +88,69 @@ function getColor(name) {
     localStorage.setItem("nameColors", JSON.stringify(nameColors));
   }
   return nameColors[name];
+}
+
+// ===== 祝日関数 =====
+function getHoliday(year, month, day){
+
+  const fixed = {
+    "1-1":"元日",
+    "2-11":"建国記念の日",
+    "2-23":"天皇誕生日",
+    "4-29":"昭和の日",
+    "5-3":"憲法記念日",
+    "5-4":"みどりの日",
+    "5-5":"こどもの日",
+    "8-11":"山の日",
+    "11-3":"文化の日",
+    "11-23":"勤労感謝の日"
+  };
+
+  if (fixed[`${month}-${day}`]) return fixed[`${month}-${day}`];
+
+  function nthMonday(n){
+    let count=0;
+    for(let i=1;i<=31;i++){
+      let d=new Date(year,month-1,i);
+      if(d.getMonth()!=month-1) break;
+      if(d.getDay()==1) count++;
+      if(count==n) return i;
+    }
+  }
+
+  if(month==1 && day==nthMonday(2)) return "成人の日";
+  if(month==7 && day==nthMonday(3)) return "海の日";
+  if(month==9 && day==nthMonday(3)) return "敬老の日";
+  if(month==10 && day==nthMonday(2)) return "スポーツの日";
+
+  // 春分・秋分
+  function shunbun(y){
+    return Math.floor(20.8431 + 0.242194*(y-1980) - Math.floor((y-1980)/4));
+  }
+  function shubun(y){
+    return Math.floor(23.2488 + 0.242194*(y-1980) - Math.floor((y-1980)/4));
+  }
+
+  if(month==3 && day==shunbun(year)) return "春分の日";
+  if(month==9 && day==shubun(year)) return "秋分の日";
+
+  // 振替休日
+  let prev = new Date(year,month-1,day-1);
+  if(getHolidaySimple(prev) && prev.getDay()==0){
+    return "振替休日";
+  }
+
+  // 国民の休日
+  let next = new Date(year,month-1,day+1);
+  if(getHolidaySimple(prev) && getHolidaySimple(next)){
+    return "国民の休日";
+  }
+
+  return "";
+}
+
+function getHolidaySimple(date){
+  return getHoliday(date.getFullYear(), date.getMonth()+1, date.getDate());
 }
 
 // 月管理
@@ -147,13 +211,16 @@ function createMonth(year, month) {
     if (day===0) row.classList.add("sun");
     if (day===6) row.classList.add("sat");
 
-    // 日付
+    // ★ここに祝日追加
+    const holiday = getHoliday(year, month+1, d);
+
     const date = document.createElement("div");
     date.className = "date";
-    date.textContent = `${month+1}/${d}`;
+    date.textContent = `${month+1}/${d}` + (holiday ? `（${holiday}）` : "");
+    if (holiday) date.classList.add("holiday");
+
     row.appendChild(date);
 
-    // 名前表示
     const names = document.createElement("div");
     names.className = "names";
 
@@ -163,7 +230,6 @@ function createMonth(year, month) {
       span.textContent = name;
       span.style.backgroundColor = getColor(name);
 
-      // ★ここが今回のポイント（入力一致削除）
       span.onclick = ()=>{
         const input = prompt("消す名前を入力してください");
 
@@ -185,7 +251,6 @@ function createMonth(year, month) {
 
     row.appendChild(names);
 
-    // 追加ボタン
     const btn = document.createElement("div");
     btn.className = "add-btn";
     btn.textContent = "+参加";
@@ -204,18 +269,15 @@ function createMonth(year, month) {
     };
 
     row.appendChild(btn);
-
     document.getElementById("calendar").appendChild(row);
   }
 }
 
-// 保存
 function save() {
   localStorage.setItem("calendarData", JSON.stringify(data));
   render();
 }
 
-// 初期表示
 render();
 
 </script>
