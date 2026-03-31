@@ -29,7 +29,7 @@ button { padding: 5px 10px; }
   align-items: center;
 }
 
-.date { width: 120px; font-weight: bold; }
+.date { width: 130px; font-weight: bold; }
 .names { flex: 1; }
 
 .name-tag {
@@ -50,9 +50,10 @@ button { padding: 5px 10px; }
 }
 
 .sat { background: #d9f0ff; }
-.sun { background: #ffd9d9; }
+.sun { background: #ffd9d9; } /* 日曜＆祝日 */
 .holiday { color: red; }
 </style>
+
 </head>
 
 <body>
@@ -74,7 +75,7 @@ button { padding: 5px 10px; }
 let titleText = localStorage.getItem("title") || "参加カレンダー";
 let data = JSON.parse(localStorage.getItem("calendarData") || "{}");
 
-// 色
+// 色管理
 let nameColors = JSON.parse(localStorage.getItem("nameColors") || "{}");
 const colors = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f39c12","#1abc9c"];
 
@@ -125,9 +126,11 @@ function getHoliday(year, month, day){
   if(month==3 && day==shunbun) return "春分の日";
   if(month==9 && day==shubun) return "秋分の日";
 
+  // 振替休日（簡易）
   const prev = new Date(year, month-1, day-1);
   if (prev.getDay() === 0) {
-    if (fixed[`${month}-${day-1}`]) return "振替休日";
+    const prevHoliday = getHoliday(year, month, day-1);
+    if (prevHoliday) return "振替休日";
   }
 
   return "";
@@ -165,6 +168,7 @@ function render() {
   createMonth(y, m+1);
 }
 
+// ===== 月生成 =====
 function createMonth(year, month) {
   const last = new Date(year, month+1, 0).getDate();
 
@@ -172,16 +176,19 @@ function createMonth(year, month) {
     const key = `${year}-${month+1}-${d}`;
     const day = new Date(year, month, d).getDay();
 
+    const holiday = getHoliday(year, month+1, d);
+
     const row = document.createElement("div");
     row.className = "day-row";
-    if (day===0) row.classList.add("sun");
-    if (day===6) row.classList.add("sat");
 
-    const holiday = getHoliday(year, month+1, d);
+    // ★ここがポイント（祝日もピンク）
+    if (day===0 || holiday) row.classList.add("sun");
+    if (day===6) row.classList.add("sat");
 
     const date = document.createElement("div");
     date.className = "date";
     date.textContent = `${month+1}/${d}` + (holiday ? `（${holiday}）` : "");
+
     if (holiday) date.classList.add("holiday");
 
     row.appendChild(date);
