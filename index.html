@@ -7,215 +7,91 @@
 
 <style>
 body { font-family: sans-serif; margin: 10px; }
-
-.top-bar {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-}
-
-.controls {
-  text-align: center;
-  margin: 10px;
-}
-
-button { padding: 5px 10px; }
-
-.day-row {
-  display: flex;
-  border-bottom: 1px solid #ccc;
-  padding: 6px;
-  align-items: center;
-}
-
-.date { width: 100px; font-weight: bold; }
-.names { flex: 1; }
-
-.name-tag {
-  padding: 3px 8px;
-  margin: 2px;
-  display: inline-block;
-  border-radius: 6px;
-  color: #fff;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.add-btn {
-  width: 80px;
-  text-align: right;
-  color: blue;
-  cursor: pointer;
-}
-
-.sat { background: #d9f0ff; }
-.sun { background: #ffd9d9; }
+.day-row { display:flex; border-bottom:1px solid #ccc; padding:5px; }
+.date { width:80px; }
+.name-tag { margin:2px; padding:2px 6px; border-radius:4px; color:#fff; cursor:pointer; }
+.add-btn { margin-left:auto; color:blue; cursor:pointer; }
 </style>
-
 </head>
 
 <body>
 
-<div class="top-bar">
-  <button onclick="moveMonth(-2)">◀</button>
-  <h2 id="title"></h2>
-  <button onclick="moveMonth(2)">▶</button>
-</div>
-
-<div class="controls">
-  <button onclick="editTitle()">タイトル編集</button>
-  <button onclick="clearAll()">管理者：全削除</button>
-</div>
-
+<h2 id="title"></h2>
 <div id="calendar"></div>
 
 <script>
 
-let titleText = localStorage.getItem("title") || "参加カレンダー";
-let data = JSON.parse(localStorage.getItem("calendarData") || "{}");
+let data = JSON.parse(localStorage.getItem("data")||"{}");
+let colors = {};
+const palette = ["red","blue","green","orange","purple"];
 
-const ADMIN_PASS = "1234";
-
-// 色管理
-let nameColors = JSON.parse(localStorage.getItem("nameColors") || "{}");
-const colors = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f39c12","#1abc9c"];
-
-function getColor(name) {
-  if (!nameColors[name]) {
-    nameColors[name] = colors[Object.keys(nameColors).length % colors.length];
-    localStorage.setItem("nameColors", JSON.stringify(nameColors));
-  }
-  return nameColors[name];
+function getColor(name){
+ if(!colors[name]){
+   colors[name] = palette[Object.keys(colors).length % palette.length];
+ }
+ return colors[name];
 }
 
-// 月管理
-let current = new Date();
-current.setDate(1);
+function render(){
+ const cal = document.getElementById("calendar");
+ cal.innerHTML = "";
+ document.getElementById("title").textContent="参加カレンダー";
 
-function moveMonth(n) {
-  current.setMonth(current.getMonth() + n);
-  render();
+ for(let d=1; d<=31; d++){
+   const key = "2026-1-"+d;
+
+   const row = document.createElement("div");
+   row.className="day-row";
+
+   const date = document.createElement("div");
+   date.className="date";
+   date.textContent="1/"+d;
+   row.appendChild(date);
+
+   const names = document.createElement("div");
+
+   (data[key]||[]).forEach(name=>{
+     const span = document.createElement("span");
+     span.className="name-tag";
+     span.textContent=name;
+     span.style.background=getColor(name);
+
+     span.onclick=()=>{
+       const input = prompt("消す名前を入力してください");
+       if(input!==name){
+         alert("一致しません");
+         return;
+       }
+       data[key]=data[key].filter(n=>n!==name);
+       save();
+     };
+
+     names.appendChild(span);
+   });
+
+   row.appendChild(names);
+
+   const btn=document.createElement("div");
+   btn.className="add-btn";
+   btn.textContent="+参加";
+   btn.onclick=()=>{
+     const name=prompt("名前入力");
+     if(!name)return;
+     data[key]=data[key]||[];
+     data[key].push(name);
+     save();
+   };
+
+   row.appendChild(btn);
+   cal.appendChild(row);
+ }
 }
 
-// タイトル編集
-function editTitle() {
-  const t = prompt("タイトル", titleText);
-  if (t) {
-    titleText = t;
-    localStorage.setItem("title", t);
-    render();
-  }
+function save(){
+ localStorage.setItem("data",JSON.stringify(data));
+ render();
 }
 
-// 全削除
-function clearAll() {
-  const pass = prompt("パスワード");
-  if (pass !== ADMIN_PASS) return alert("違います");
-  if (!confirm("全削除しますか？")) return;
-
-  data = {};
-  localStorage.setItem("calendarData", JSON.stringify(data));
-  render();
-}
-
-// 描画
-function render() {
-  const cal = document.getElementById("calendar");
-  cal.innerHTML = "";
-
-  const y = current.getFullYear();
-  const m = current.getMonth();
-
-  document.getElementById("title").textContent =
-    `${titleText}（${y}年 ${m+1}月〜${m+2}月）`;
-
-  createMonth(y, m);
-  createMonth(y, m+1);
-}
-
-// 月生成
-function createMonth(year, month) {
-  const last = new Date(year, month+1, 0).getDate();
-
-  for (let d=1; d<=last; d++) {
-    const key = `${year}-${month+1}-${d}`;
-    const day = new Date(year, month, d).getDay();
-
-    const row = document.createElement("div");
-    row.className = "day-row";
-    if (day===0) row.classList.add("sun");
-    if (day===6) row.classList.add("sat");
-
-    // 日付
-    const date = document.createElement("div");
-    date.className = "date";
-    date.textContent = `${month+1}/${d}`;
-    row.appendChild(date);
-
-    // 名前表示
-    const names = document.createElement("div");
-    names.className = "names";
-
-    (data[key]||[]).forEach(name=>{
-      const span = document.createElement("span");
-      span.className = "name-tag";
-      span.textContent = name;
-      span.style.backgroundColor = getColor(name);
-
-      // ★ここが今回のポイント（入力一致削除）
-      span.onclick = ()=>{
-        const input = prompt("消す名前を入力してください");
-
-        if (!input) return;
-
-        if (input !== name) {
-          alert("名前が一致しません");
-          return;
-        }
-
-        if (!confirm(name + " を削除しますか？")) return;
-
-        data[key] = data[key].filter(n => n !== name);
-        save();
-      };
-
-      names.appendChild(span);
-    });
-
-    row.appendChild(names);
-
-    // 追加ボタン
-    const btn = document.createElement("div");
-    btn.className = "add-btn";
-    btn.textContent = "+参加";
-
-    btn.onclick = ()=>{
-      const newName = prompt("名前を入力してください");
-      if (!newName) return;
-
-      data[key] = data[key] || [];
-
-      if (!data[key].includes(newName)) {
-        data[key].push(newName);
-      }
-
-      save();
-    };
-
-    row.appendChild(btn);
-
-    document.getElementById("calendar").appendChild(row);
-  }
-}
-
-// 保存
-function save() {
-  localStorage.setItem("calendarData", JSON.stringify(data));
-  render();
-}
-
-// 初期表示
 render();
 
 </script>
