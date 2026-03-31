@@ -8,6 +8,20 @@
 <style>
 body { font-family: sans-serif; margin: 10px; }
 
+.top-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.controls {
+  text-align: center;
+  margin: 10px;
+}
+
+button { padding: 5px 10px; }
+
 .day-row {
   display: flex;
   border-bottom: 1px solid #ccc;
@@ -15,11 +29,13 @@ body { font-family: sans-serif; margin: 10px; }
   align-items: center;
 }
 
-.date { width: 140px; font-weight: bold; }
+.date { width: 100px; font-weight: bold; }
+.names { flex: 1; }
 
 .name-tag {
   padding: 3px 8px;
   margin: 2px;
+  display: inline-block;
   border-radius: 6px;
   color: #fff;
   font-weight: bold;
@@ -27,133 +43,114 @@ body { font-family: sans-serif; margin: 10px; }
 }
 
 .add-btn {
-  margin-left: auto;
+  width: 80px;
+  text-align: right;
   color: blue;
   cursor: pointer;
 }
 
-.sun { background: #ffd6d6; }
-.sat { background: #d6eaff; }
-.holiday { color: red; }
+.sat { background: #d9f0ff; }
+.sun { background: #ffd9d9; }
+.holiday { background: #ffe4e4; color: red; }
 </style>
 
 </head>
 
 <body>
 
-<h2 id="title">参加カレンダー</h2>
+<div class="top-bar">
+  <button onclick="moveMonth(-2)">◀</button>
+  <h2 id="title"></h2>
+  <button onclick="moveMonth(2)">▶</button>
+</div>
+
+<div class="controls">
+  <button onclick="editTitle()">タイトル編集</button>
+  <button onclick="clearAll()">管理者：全削除</button>
+</div>
+
 <div id="calendar"></div>
 
 <script>
 
-// ===== データ =====
+let myName = localStorage.getItem("myName") || "";
+let titleText = localStorage.getItem("title") || "参加カレンダー";
 let data = JSON.parse(localStorage.getItem("calendarData") || "{}");
 
-// ===== 色管理 =====
-let nameColors = JSON.parse(localStorage.getItem("nameColors") || "{}");
-const palette = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f39c12","#1abc9c"];
+const ADMIN_PASS = "1234";
 
-function getColor(name){
-  if(!nameColors[name]){
-    nameColors[name] = palette[Object.keys(nameColors).length % palette.length];
+let nameColors = JSON.parse(localStorage.getItem("nameColors") || "{}");
+
+const colors = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f39c12","#1abc9c"];
+
+function getColor(name) {
+  if (!nameColors[name]) {
+    nameColors[name] = colors[Object.keys(nameColors).length % colors.length];
     localStorage.setItem("nameColors", JSON.stringify(nameColors));
   }
   return nameColors[name];
 }
 
-// ===== 祝日 =====
-function getHoliday(year, month, day){
+let current = new Date();
+current.setDate(1);
 
-  const fixed = {
-    "1-1":"元日",
-    "2-11":"建国記念の日",
-    "2-23":"天皇誕生日",
-    "4-29":"昭和の日",
-    "5-3":"憲法記念日",
-    "5-4":"みどりの日",
-    "5-5":"こどもの日",
-    "8-11":"山の日",
-    "11-3":"文化の日",
-    "11-23":"勤労感謝の日"
-  };
-
-  if (fixed[`${month}-${day}`]) return fixed[`${month}-${day}`];
-
-  function nthMonday(n){
-    let count=0;
-    for(let i=1;i<=31;i++){
-      let d=new Date(year,month-1,i);
-      if(d.getMonth()!=month-1) break;
-      if(d.getDay()==1) count++;
-      if(count==n) return i;
-    }
-  }
-
-  if(month==1 && day==nthMonday(2)) return "成人の日";
-  if(month==7 && day==nthMonday(3)) return "海の日";
-  if(month==9 && day==nthMonday(3)) return "敬老の日";
-  if(month==10 && day==nthMonday(2)) return "スポーツの日";
-
-  function shunbun(y){
-    return Math.floor(20.8431 + 0.242194*(y-1980) - Math.floor((y-1980)/4));
-  }
-  function shubun(y){
-    return Math.floor(23.2488 + 0.242194*(y-1980) - Math.floor((y-1980)/4));
-  }
-
-  if(month==3 && day==shunbun(year)) return "春分の日";
-  if(month==9 && day==shubun(year)) return "秋分の日";
-
-  // 振替休日
-  let prev = new Date(year,month-1,day-1);
-  if(getHolidaySimple(prev) && prev.getDay()==0){
-    return "振替休日";
-  }
-
-  // 国民の休日
-  let next = new Date(year,month-1,day+1);
-  if(getHolidaySimple(prev) && getHolidaySimple(next)){
-    return "国民の休日";
-  }
-
-  return "";
+function moveMonth(n) {
+  current.setMonth(current.getMonth() + n);
+  render();
 }
 
-function getHolidaySimple(date){
-  return getHoliday(date.getFullYear(), date.getMonth()+1, date.getDate());
+function editTitle() {
+  const t = prompt("タイトル", titleText);
+  if (t) {
+    titleText = t;
+    localStorage.setItem("title", t);
+    render();
+  }
 }
 
-// ===== 描画 =====
-function render(){
+function clearAll() {
+  const pass = prompt("パスワード");
+  if (pass !== ADMIN_PASS) return alert("違います");
+  if (!confirm("全削除しますか？")) return;
+
+  data = {};
+  localStorage.setItem("calendarData", JSON.stringify(data));
+  render();
+}
+
+function render() {
   const cal = document.getElementById("calendar");
   cal.innerHTML = "";
 
-  const year = 2026;
-  const month = 1;
+  const y = current.getFullYear();
+  const m = current.getMonth();
 
-  for(let d=1; d<=31; d++){
+  document.getElementById("title").textContent =
+    `${titleText}（${y}年 ${m+1}月〜${m+2}月）`;
 
-    const key = `${year}-${month}-${d}`;
-    const dateObj = new Date(year, month-1, d);
-    const day = dateObj.getDay();
+  createMonth(y, m);
+  createMonth(y, m+1);
+}
+
+function createMonth(year, month) {
+  const last = new Date(year, month+1, 0).getDate();
+
+  for (let d=1; d<=last; d++) {
+    const key = `${year}-${month+1}-${d}`;
+    const day = new Date(year, month, d).getDay();
 
     const row = document.createElement("div");
     row.className = "day-row";
-
-    if(day===0) row.classList.add("sun");
-    if(day===6) row.classList.add("sat");
-
-    const holiday = getHoliday(year, month, d);
+    if (day===0) row.classList.add("sun");
+    if (day===6) row.classList.add("sat");
 
     const date = document.createElement("div");
     date.className = "date";
-    date.textContent = `${month}/${d}` + (holiday ? `（${holiday}）` : "");
-
-    if(holiday) date.classList.add("holiday");
-
+    date.textContent = `${month+1}/${d}`;
     row.appendChild(date);
 
     const names = document.createElement("div");
+    names.className = "names";
 
     (data[key]||[]).forEach(name=>{
       const span = document.createElement("span");
@@ -162,12 +159,8 @@ function render(){
       span.style.backgroundColor = getColor(name);
 
       span.onclick = ()=>{
-        const input = prompt("消す名前を入力してください");
-        if(input !== name){
-          alert("名前が一致しません");
-          return;
-        }
-        data[key] = data[key].filter(n => n !== name);
+        if (name!==myName) return alert("自分のみ削除可");
+        data[key] = data[key].filter(n=>n!==name);
         save();
       };
 
@@ -181,23 +174,21 @@ function render(){
     btn.textContent = "+参加";
 
     btn.onclick = ()=>{
-      const newName = prompt("名前を入力してください");
-      if(!newName) return;
-
-      data[key] = data[key] || [];
-      if(!data[key].includes(newName)){
-        data[key].push(newName);
+      if (!myName) {
+        myName = prompt("名前入力");
+        localStorage.setItem("myName", myName);
       }
-
+      data[key] = data[key] || [];
+      if (!data[key].includes(myName)) data[key].push(myName);
       save();
     };
 
     row.appendChild(btn);
-    cal.appendChild(row);
+    document.getElementById("calendar").appendChild(row);
   }
 }
 
-function save(){
+function save() {
   localStorage.setItem("calendarData", JSON.stringify(data));
   render();
 }
