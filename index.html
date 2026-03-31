@@ -151,8 +151,7 @@ function render() {
   const y = current.getFullYear();
   const m = current.getMonth();
 
-  document.getElementById("title").textContent =
-    `${titleText}（${y}年 ${m+1}月〜${m+2}月）`;
+  document.getElementById("title").textContent = titleText;
 
   createMonth(y, m);
   createMonth(y, m+1);
