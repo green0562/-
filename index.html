@@ -29,7 +29,7 @@ button { padding: 5px 10px; }
   align-items: center;
 }
 
-.date { width: 130px; font-weight: bold; }
+.date { width: 120px; font-weight: bold; }
 .names { flex: 1; }
 
 .name-tag {
@@ -50,8 +50,7 @@ button { padding: 5px 10px; }
 }
 
 .sat { background: #d9f0ff; }
-.sun { background: #ffd9d9; } /* 日曜＆祝日 */
-.holiday { color: red; }
+.sun { background: #ffd9d9; }
 </style>
 
 </head>
@@ -87,23 +86,16 @@ function getColor(name) {
   return nameColors[name];
 }
 
-// ===== 祝日 =====
-function getHoliday(year, month, day){
+// ===== 祝日判定（表示はしない）=====
+function isHoliday(year, month, day){
 
   const fixed = {
-    "1-1":"元日",
-    "2-11":"建国記念の日",
-    "2-23":"天皇誕生日",
-    "4-29":"昭和の日",
-    "5-3":"憲法記念日",
-    "5-4":"みどりの日",
-    "5-5":"こどもの日",
-    "8-11":"山の日",
-    "11-3":"文化の日",
-    "11-23":"勤労感謝の日"
+    "1-1":1,"2-11":1,"2-23":1,"4-29":1,
+    "5-3":1,"5-4":1,"5-5":1,
+    "8-11":1,"11-3":1,"11-23":1
   };
 
-  if (fixed[`${month}-${day}`]) return fixed[`${month}-${day}`];
+  if (fixed[`${month}-${day}`]) return true;
 
   function nthMonday(n){
     let count=0;
@@ -115,25 +107,23 @@ function getHoliday(year, month, day){
     }
   }
 
-  if(month==1 && day==nthMonday(2)) return "成人の日";
-  if(month==7 && day==nthMonday(3)) return "海の日";
-  if(month==9 && day==nthMonday(3)) return "敬老の日";
-  if(month==10 && day==nthMonday(2)) return "スポーツの日";
+  if(month==1 && day==nthMonday(2)) return true;
+  if(month==7 && day==nthMonday(3)) return true;
+  if(month==9 && day==nthMonday(3)) return true;
+  if(month==10 && day==nthMonday(2)) return true;
 
   const shunbun = Math.floor(20.8431 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
   const shubun  = Math.floor(23.2488 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
 
-  if(month==3 && day==shunbun) return "春分の日";
-  if(month==9 && day==shubun) return "秋分の日";
+  if(month==3 && day==shunbun) return true;
+  if(month==9 && day==shubun) return true;
 
-  // 振替休日（簡易）
   const prev = new Date(year, month-1, day-1);
   if (prev.getDay() === 0) {
-    const prevHoliday = getHoliday(year, month, day-1);
-    if (prevHoliday) return "振替休日";
+    if (fixed[`${month}-${day-1}`]) return true;
   }
 
-  return "";
+  return false;
 }
 
 // ===== カレンダー =====
@@ -168,7 +158,6 @@ function render() {
   createMonth(y, m+1);
 }
 
-// ===== 月生成 =====
 function createMonth(year, month) {
   const last = new Date(year, month+1, 0).getDate();
 
@@ -176,20 +165,17 @@ function createMonth(year, month) {
     const key = `${year}-${month+1}-${d}`;
     const day = new Date(year, month, d).getDay();
 
-    const holiday = getHoliday(year, month+1, d);
+    const holiday = isHoliday(year, month+1, d);
 
     const row = document.createElement("div");
     row.className = "day-row";
 
-    // ★ここがポイント（祝日もピンク）
     if (day===0 || holiday) row.classList.add("sun");
     if (day===6) row.classList.add("sat");
 
     const date = document.createElement("div");
     date.className = "date";
-    date.textContent = `${month+1}/${d}` + (holiday ? `（${holiday}）` : "");
-
-    if (holiday) date.classList.add("holiday");
+    date.textContent = `${month+1}/${d}`;
 
     row.appendChild(date);
 
