@@ -1,0 +1,57 @@
+body {
+  font-family: sans-serif;
+  margin: 10px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.controls {
+  text-align: center;
+  margin: 10px;
+}
+
+button {
+  padding: 5px 10px;
+}
+
+.day-row {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  padding: 6px;
+  align-items: center;
+}
+
+.date {
+  width: 100px;
+  font-weight: bold;
+}
+
+.names {
+  flex: 1;
+}
+
+.name-tag {
+  padding: 3px 8px;
+  margin: 2px;
+  display: inline-block;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.add-btn {
+  width: 80px;
+  text-align: right;
+  color: blue;
+  cursor: pointer;
+}
+
+.sat { background: #d9f0ff; }
+.sun { background: #ffd9d9; }
+.holiday { background: #ffe4e4; color: red; }
